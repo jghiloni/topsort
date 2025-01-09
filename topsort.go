@@ -15,15 +15,17 @@
 package topsort
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 )
 
-type Graph[Key comparable] struct {
+type Graph[Key cmp.Ordered] struct {
 	nodes map[Key]nodeimpl[Key]
 }
 
-func NewGraph[Key comparable]() *Graph[Key] {
+func NewGraph[Key cmp.Ordered]() *Graph[Key] {
 	return &Graph[Key]{
 		nodes: make(map[Key]nodeimpl[Key]),
 	}
@@ -57,15 +59,23 @@ func (g *Graph[Key]) ContainsNode(key Key) bool {
 }
 
 func (g *Graph[Key]) TopSort(key Key) ([]Key, error) {
+	return g.doTopSort(key, false)
+}
+
+func (g *Graph[Key]) StableTopSort(key Key) ([]Key, error) {
+	return g.doTopSort(key, true)
+}
+
+func (g *Graph[Key]) doTopSort(key Key, stable bool) ([]Key, error) {
 	results := newOrderedSet[Key]()
-	err := g.visit(key, results, nil)
+	err := g.visit(key, results, nil, stable)
 	if err != nil {
 		return nil, err
 	}
 	return results.items, nil
 }
 
-func (g *Graph[Key]) visit(key Key, results *orderedset[Key], visited *orderedset[Key]) error {
+func (g *Graph[Key]) visit(key Key, results *orderedset[Key], visited *orderedset[Key], stable bool) error {
 	if visited == nil {
 		visited = newOrderedSet[Key]()
 	}
@@ -78,12 +88,17 @@ func (g *Graph[Key]) visit(key Key, results *orderedset[Key], visited *orderedse
 		for i, k := range cycle {
 			strs[i] = fmt.Sprintf("%v", k)
 		}
-		return fmt.Errorf("Cycle error: %s", strings.Join(strs, " -> "))
+		return fmt.Errorf("cycle error: %s", strings.Join(strs, " -> "))
 	}
 
 	n := g.nodes[key]
-	for _, edge := range n.edges() {
-		err := g.visit(edge, results, visited.copy())
+	edges := n.edges()
+	if stable {
+		slices.Sort(edges)
+	}
+
+	for _, edge := range edges {
+		err := g.visit(edge, results, visited.copy(), stable)
 		if err != nil {
 			return err
 		}
@@ -93,7 +108,7 @@ func (g *Graph[Key]) visit(key Key, results *orderedset[Key], visited *orderedse
 	return nil
 }
 
-type nodeimpl[Key comparable] map[Key]bool
+type nodeimpl[Key cmp.Ordered] map[Key]bool
 
 func (n nodeimpl[Key]) addEdge(key Key) {
 	n[key] = true
@@ -107,13 +122,13 @@ func (n nodeimpl[Key]) edges() []Key {
 	return keys
 }
 
-type orderedset[Key comparable] struct {
+type orderedset[Key cmp.Ordered] struct {
 	indexes map[Key]int
 	items   []Key
 	length  int
 }
 
-func newOrderedSet[Key comparable]() *orderedset[Key] {
+func newOrderedSet[Key cmp.Ordered]() *orderedset[Key] {
 	return &orderedset[Key]{
 		indexes: make(map[Key]int),
 		length:  0,

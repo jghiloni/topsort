@@ -1,3 +1,3 @@
-module github.com/stevenle/topsort/v2
+module github.com/jghiloni/topsort/v3
 
-go 1.18
+go 1.22

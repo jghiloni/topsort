@@ -144,6 +144,69 @@ func TestTopSortCycleError3(t *testing.T) {
 	}
 }
 
+func TestStableSort(t *testing.T) {
+	graph := initGraph()
+	graph.AddEdge("a", "b")
+	graph.AddEdge("a", "c")
+	graph.AddEdge("a", "d")
+	graph.AddEdge("b", "x")
+	graph.AddEdge("c", "y")
+	graph.AddEdge("d", "z")
+
+	expected := []string{"x", "b", "y", "c", "z", "d", "a"}
+	actual, err := graph.StableTopSort("a")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	deepEqual(t, expected, actual)
+
+	actual2, err := graph.StableTopSort("a")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if !deepEqual(t, actual, actual2) {
+		t.Fatal("sort wasn't stable")
+	}
+
+}
+
+func TestNonStable(t *testing.T) {
+	graph := initGraph()
+	graph.AddEdge("a", "b")
+	graph.AddEdge("a", "c")
+	graph.AddEdge("a", "d")
+	graph.AddEdge("b", "x")
+	graph.AddEdge("c", "y")
+	graph.AddEdge("d", "z")
+
+	a1, _ := graph.TopSort("a")
+	a2, _ := graph.TopSort("a")
+
+	if !deepEqual(t, a1, a2) {
+		t.Log("not equal, but still fine")
+	}
+}
+
+func deepEqual(t *testing.T, expected, actual []string) bool {
+	if len(actual) != len(expected) {
+		t.Logf("actual len %d, expected len %d", len(actual), len(expected))
+		return false
+	}
+
+	for i := range actual {
+		if actual[i] != expected[i] {
+			t.Logf("actual %q != expected %q", actual[i], expected[i])
+			return false
+		}
+	}
+
+	return true
+}
+
 func initGraph() *Graph[string] {
 	graph := NewGraph[string]()
 	return graph
